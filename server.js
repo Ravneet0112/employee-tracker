@@ -2,10 +2,6 @@ const inquirer = require('inquirer');
 const mysql = require('mysql2');
 
 const PORT = process.env.PORT || 3001;
-const app = express();
-
-app.use(express.urlencoded({ extended: false }));
-app.use(express.json());
 
 const db = mysql.createConnection(
     {
@@ -16,6 +12,9 @@ const db = mysql.createConnection(
     },
     console.log(`Connected to the employees_db database.`)
 );
+db.connect((err) => {
+    main()
+})
 
 async function main() {
     const questions = inquirer.prompt([
@@ -60,46 +59,55 @@ async function main() {
                 },
             ]
         }
-    ]);
+    ]).then(function (response) {
 
-    switch (questions) {
-        case 'view_employees':
-            return viewEmployees();
-        case 'view_departments':
-            return viewDepartments();
-        case 'view_roles':
-            return viewRoles();
-        case 'add_employee':
-            return addEmployee();
-        case 'add_department':
-            return addDepartment();
-        case 'add_role':
-            return addRole();
-        case 'update_role':
-            return updateRole();
-        default:
-            break;
-    }
+
+
+
+        switch (response.question) {
+            case 'view_employees':
+                return viewEmployees();
+            case 'view_departments':
+                return viewDepartments();
+            case 'view_roles':
+                return viewRoles();
+            case 'add_employee':
+                return addEmployee();
+            case 'add_department':
+                return addDepartment();
+            case 'add_role':
+                return addRole();
+            case 'update_role':
+                return updateRole();
+            default:
+                break;
+        }
+    })
 }
+
+
 
 function viewEmployees() {
     db.query(`SELECT * FROM employee`, function (err, results) {
         console.table(results);
+        main();
     });
 }
 
 function viewDepartments() {
     db.query(`SELECT * FROM department`, function (err, results) {
         console.table(results);
+        main();
     });
 }
 
 function viewRoles() {
     db.query(`SELECT * FROM role`, function (err, results) {
         console.table(results);
+        main();
     });
 
-    
+
 }
 
 function addEmployee() {
@@ -126,7 +134,74 @@ function addEmployee() {
         }
     ]).then(function (answers) {
         db.query(`INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)`, [answers.first_name, answers.last_name, answers.role_id, answers.manager_id], function (err, results) {
-            console.table(results);
+            viewEmployees();
+
+        });
+        
+    });
+
+
+}
+
+function addDepartment() {
+    inquirer.prompt([
+        {
+            type: 'input',
+            name: 'department_name',
+            message: 'What is the name of the department?'
+        }
+    ]).then(function (answers) {
+        db.query(`INSERT INTO department (department_name) VALUES (?)`, [answers.department_name], function (err, results) {
+            viewDepartments();
         });
     });
 }
+
+function addRole() {
+    inquirer.prompt([
+        {
+            type: 'input',
+            name: 'title',
+            message: 'What is the name of the role?'
+        },
+        {
+            type: 'input',
+            name: 'salary',
+            message: 'What is the salary of the role?'
+        },
+        {
+            type: 'input',
+            name: 'department_id',
+            message: 'What is the department id?'
+        },]).then(function (answers) {
+            
+            db.query(`INSERT INTO role (title, salary, department_id) VALUES (?, ?, ?)`, [answers.title, answers.salary, answers.department_id], function (err, results) {
+                viewRoles();
+                }
+            );
+        });
+}
+
+function updateRole() {
+    inquirer.prompt([
+        {
+            type: 'input',
+            name: 'id',
+            message: 'What is the id of the employee whose role you would like to update?'
+        },
+        {
+            type: 'input',
+            name: 'role_id',
+            message: 'What is the id of the new role that you would like to assign to the employee?'
+        }]).then (function (answers) {
+            db.query(`UPDATE employee SET role_id =? WHERE id =?`, [answers.role_id, answers.id], function (err, results) {
+                viewEmployees();
+            });
+        });
+}
+
+
+
+
+
+
